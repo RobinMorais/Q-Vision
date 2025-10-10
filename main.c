@@ -40,7 +40,7 @@
 #include "icc.h"
 #include "rtc.h"
 #include "lp.h"
-#include "cnn_1.h"`
+#include "cnn_1.h"
 #include "cnn_2.h"
 #include "cnn_3.h"
 #include "MAXCAM_Debug.h"
