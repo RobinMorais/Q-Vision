@@ -1,30 +1,3 @@
-/******************************************************************************
- *
- * Copyright (C) 2022-2023 Maxim Integrated Products, Inc. (now owned by 
- * Analog Devices, Inc.),
- * Copyright (C) 2023-2024 Analog Devices, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- ******************************************************************************/
-
-/**
- * @file    main.c
- * @brief   Facial Recognition MAX78002 Evkit Demo
- *
- * @details
- *
- */
 
 #define S_MODULE_NAME "main"
 
@@ -52,8 +25,10 @@
 #include "gpio.h"
 #include "pb.h"
 #include "utils.h"
+#include "comm.h"
 
 #define CONSOLE_BAUD 115200
+#define BAUD 19230
 
 #define MXC_GPIO_PORT_INTERRUPT_IN MXC_GPIO2
 #define MXC_GPIO_PIN_INTERRUPT_IN MXC_GPIO_PIN_7
@@ -191,7 +166,6 @@ static const uint8_t camera_settings[][2] = {
 };
 #endif
 
-mxc_uart_regs_t *CommUart;
 unsigned int touch_x, touch_y;
 int font = (int)&Liberation_Sans16x16[0];
 
@@ -259,12 +233,14 @@ int main(void)
         PR_ERR("UART1 Init Error: %d\n", ret);
         return ret;
     }
+    comm_init(BAUD);
 
     printf("Waiting...\n");
 
     // DO NOT DELETE THIS LINE:
     MXC_Delay(SEC(2)); // Let debugger interrupt if needed
 
+    comm_start();
     // Enable peripheral, enable CNN interrupt, turn on CNN clock
     // CNN clock: PLL (200 MHz) div 4
     //cnn_2_enable(MXC_S_GCR_PCLKDIV_CNNCLKSEL_IPLL, MXC_S_GCR_PCLKDIV_CNNCLKDIV_DIV4);
@@ -415,6 +391,14 @@ int main(void)
         }
 
 #endif
+        if (comm_message_ready()) {
+            printf("message ready\n");
+            frame f;
+            if (comm_get_message(&f)) {
+                printf("[RX] addr=0x%02X cmd=0x%02X data=0x%d Xplen=%u\n",
+                       f.addr, f.payload[0], f.payload[1], f.plen);
+            }
+        }
         if (record_mode) {
             record();
             // Delay for 0.5 seconds before continuing
@@ -439,6 +423,9 @@ int main(void)
 
         loop_time = utils_get_time_ms() - loop_time;
         printf("Loop time: %dms\n", loop_time);
+        uint8_t time = loop_time;
+        uint8_t data[2] = {0xAA, time};
+        comm_send(0x12, 0x01, data, sizeof(data));
     }
 
     return 0;
