@@ -1,35 +1,3 @@
-/******************************************************************************
- * Copyright (C) 2022-2023 Maxim Integrated Products, Inc., All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL MAXIM INTEGRATED BE LIABLE FOR ANY CLAIM, DAMAGES
- * OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Except as contained in this notice, the name of Maxim Integrated
- * Products, Inc. shall not be used except as stated in the Maxim Integrated
- * Products, Inc. Branding Policy.
- *
- * The mere transfer of this software does not imply any licenses
- * of trade secrets, proprietary technology, copyrights, patents,
- * trademarks, maskwork rights, or any other form of intellectual
- * property whatsoever. Maxim Integrated Products, Inc. retains all
- * ownership rights.
- *
- ******************************************************************************/
 #include <string.h>
 #include <math.h>
 
@@ -95,7 +63,33 @@ static int32_t ml_3_data32[(CNN_3_NUM_OUTPUTS + 3) / 4];
 
 uint8_t box_width;
 uint8_t box_height;
+
+
+static char     s_last_name[7] = {0}; // 6 + '\0'
 /********************************* Functions **************************/
+
+void set_fname(const char* n)
+{
+    if (!n) { s_last_name[0] = '\0'; return; }
+    // Copy max 6 bytes; always terminate
+    for (int i = 0; i < 6; ++i) {
+        char c = n[i];
+        s_last_name[i] = c ? c : '\0';
+        if (!c) { // early termination
+            for (int j = i + 1; j < 6; ++j) s_last_name[j] = '\0';
+            break;
+        }
+    }
+    s_last_name[6] = '\0';
+}
+
+
+
+const char* get_fname(void)
+{
+    return s_last_name;
+}
+
 
 #ifndef USE_BOX_ONLY
 void calculate_box_offset(void)
@@ -601,6 +595,7 @@ static void run_cnn_2(int x_offset, int y_offset)
         name = "Unknown";
     }
 
+
 #ifdef TFT_ENABLE
     text_t printResult;
     printResult.data = name;
@@ -608,6 +603,7 @@ static void run_cnn_2(int x_offset, int y_offset)
     MXC_TFT_ClearArea(&area, 4);
     MXC_TFT_PrintFont(CAPTURE_X, CAPTURE_Y, font, &printResult, NULL);
 #endif
+    set_fname(name);
 }
 
 #ifdef LP_MODE_ENABLE
