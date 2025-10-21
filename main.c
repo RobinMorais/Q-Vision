@@ -1,9 +1,37 @@
+/******************************************************************************
+ *
+ * Copyright (C) 2022-2023 Maxim Integrated Products, Inc. (now owned by 
+ * Analog Devices, Inc.),
+ * Copyright (C) 2023-2024 Analog Devices, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ ******************************************************************************/
+
+/**
+ * @file    main.c
+ * @brief   Facial Recognition MAX78002 Evkit Demo
+ *
+ * @details
+ *
+ */
 
 #define S_MODULE_NAME "main"
 
 /***** Includes *****/
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 #include "board.h"
 #include "mxc.h"
@@ -28,7 +56,6 @@
 #include "comm.h"
 
 #define CONSOLE_BAUD 115200
-#define BAUD 19230
 
 #define MXC_GPIO_PORT_INTERRUPT_IN MXC_GPIO2
 #define MXC_GPIO_PIN_INTERRUPT_IN MXC_GPIO_PIN_7
@@ -166,6 +193,7 @@ static const uint8_t camera_settings[][2] = {
 };
 #endif
 
+mxc_uart_regs_t *CommUart;
 unsigned int touch_x, touch_y;
 int font = (int)&Liberation_Sans16x16[0];
 
@@ -213,13 +241,10 @@ int main(void)
     int slaveAddress;
     int id;
     int dma_channel;
-    int key;
-    int after_record = 1;
     mxc_uart_regs_t *ConsoleUart;
     text_t text_buffer;
 
     /* Enable cache */
-
     MXC_ICC_Enable(MXC_ICC0);
 
     // Switch to 120 MHz clock
@@ -233,14 +258,12 @@ int main(void)
         PR_ERR("UART1 Init Error: %d\n", ret);
         return ret;
     }
-    comm_init(BAUD);
 
     printf("Waiting...\n");
 
     // DO NOT DELETE THIS LINE:
     MXC_Delay(SEC(2)); // Let debugger interrupt if needed
 
-    comm_start();
     // Enable peripheral, enable CNN interrupt, turn on CNN clock
     // CNN clock: PLL (200 MHz) div 4
     //cnn_2_enable(MXC_S_GCR_PCLKDIV_CNNCLKSEL_IPLL, MXC_S_GCR_PCLKDIV_CNNCLKDIV_DIV4);
@@ -324,35 +347,6 @@ int main(void)
     MXC_TFT_SetRotation(ROTATE_180);
     MXC_TFT_SetBackGroundColor(4);
     MXC_TFT_SetForeGroundColor(WHITE); // set font color to white
-#ifdef TS_ENABLE
-    MXC_TS_Init();
-    MXC_TS_Start();
-
-#else
-    mxc_gpio_cfg_t gpio_interrupt;
-    gpio_interrupt.port = MXC_GPIO_PORT_INTERRUPT_IN;
-    gpio_interrupt.mask = MXC_GPIO_PIN_INTERRUPT_IN;
-    gpio_interrupt.pad = MXC_GPIO_PAD_PULL_UP;
-    gpio_interrupt.func = MXC_GPIO_FUNC_IN;
-    gpio_interrupt.vssel = MXC_GPIO_VSSEL_VDDIOH;
-    MXC_GPIO_Config(&gpio_interrupt);
-    MXC_GPIO_RegisterCallback(&gpio_interrupt, gpio_isr, NULL);
-    MXC_GPIO_IntConfig(&gpio_interrupt, MXC_GPIO_INT_FALLING);
-    MXC_GPIO_EnableInt(gpio_interrupt.port, gpio_interrupt.mask);
-    NVIC_EnableIRQ(MXC_GPIO_GET_IRQ(MXC_GPIO_GET_IDX(MXC_GPIO_PORT_INTERRUPT_IN)));
-
-    mxc_gpio_cfg_t gpio_interrupt_2;
-    gpio_interrupt_2.port = MXC_GPIO_PORT_INTERRUPT_IN_2;
-    gpio_interrupt_2.mask = MXC_GPIO_PIN_INTERRUPT_IN_2;
-    gpio_interrupt_2.pad = MXC_GPIO_PAD_PULL_UP;
-    gpio_interrupt_2.func = MXC_GPIO_FUNC_IN;
-    gpio_interrupt_2.vssel = MXC_GPIO_VSSEL_VDDIOH;
-    MXC_GPIO_Config(&gpio_interrupt_2);
-    MXC_GPIO_RegisterCallback(&gpio_interrupt_2, gpio_isr_2, NULL);
-    MXC_GPIO_IntConfig(&gpio_interrupt_2, MXC_GPIO_INT_FALLING);
-    MXC_GPIO_EnableInt(gpio_interrupt_2.port, gpio_interrupt_2.mask);
-    NVIC_EnableIRQ(MXC_GPIO_GET_IRQ(MXC_GPIO_GET_IDX(MXC_GPIO_PORT_INTERRUPT_IN_2)));
-#endif
 
 #endif
 
@@ -371,61 +365,70 @@ int main(void)
     MXC_LP_EnableWUTAlarmWakeup();
     /* Enable WakeUp Timer interrupt */
     NVIC_EnableIRQ(WUT_IRQn);
+
 #endif
+    comm_init(19230);
+    comm_start();
+    uint8_t value = 1;
+    // comm_send(0x12,0x01, &tick, sizeof(tick));
+
     while (1) {
         int loop_time = utils_get_time_ms();
-#ifdef TS_ENABLE
-        if (after_record) {
-            after_record = 0;
-            MXC_TS_AddButton(260, 0, 290, 80, 1);
-            MXC_TFT_FillRect(&area_1, 0xFD20);
-            text_buffer.data = "Record";
-            text_buffer.len = 6;
-            MXC_TFT_PrintFont(162, 270, font, &text_buffer, NULL);
-        }
 
-        key = MXC_TS_GetKey();
-
-        if (key == 1) {
-            record_mode = 1;
-        }
-
-#endif
-        if (comm_message_ready()) {
-            printf("message ready\n");
+        if(comm_message_ready()){
             frame f;
-            if (comm_get_message(&f)) {
-                printf("[RX] addr=0x%02X cmd=0x%02X data=0x%d Xplen=%u\n",
-                       f.addr, f.payload[0], f.payload[1], f.plen);
+            if(comm_get_message(&f)){
+                
+                printf("[RX] addr=0x%02X len=%u plen=%u chk=0x%02X\n",
+                f.addr, f.len, f.plen, f.chk);
+                
+                if (f.plen > 0) {
+                    printf("cmd=0x%02X\n", f.payload[0]);
+
+                    switch (f.payload[0])
+                    {
+                    case 0xA0:
+                        if (f.plen > 1) {
+                            printf("data: ");
+                            for (int i = 1; i < f.plen; i++) {
+                                printf("%02X ", f.payload[i]);
+                                uint8_t id = f.payload[i];
+                                record(id);
+                                comm_send(2,150,NULL,0);
+                            }
+                        } else{
+                            printf("no data");
+                        }
+                        break;
+                    case 0xFA:
+                        comm_send(2,250,&value,8);
+                    default:
+                        break;
+                    }
+                }
+
             }
-        }
-        if (record_mode) {
-            record();
-            // Delay for 0.5 seconds before continuing
-            MXC_Delay(MXC_DELAY_MSEC(500));
-            record_mode = 0;
-            after_record = 1;
         } else {
             face_detection();
 
             if (face_detected) {
                 face_id();
-
+                const char* name = get_fname();
+                if (strcmp(name, "Unknown")){
+                    uint8_t id = (uint8_t)name[0];
+                    comm_send(01,03,&id, sizeof(id));
+                }
                 face_detected = 0;
             }
+                
 #ifdef TFT_ENABLE
             else {
                 MXC_TFT_ClearArea(&area, 4);
             }
 #endif
-        }
-        
-
+    }
         loop_time = utils_get_time_ms() - loop_time;
         printf("Loop time: %dms\n", loop_time);
-        uint8_t time = loop_time;
-        uint8_t data[2] = {0xAA, time};
-        comm_send(0x12, 0x01, data, sizeof(data));
     }
 
     return 0;
