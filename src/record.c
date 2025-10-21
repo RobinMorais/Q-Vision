@@ -1,35 +1,3 @@
-/******************************************************************************
- * Copyright (C) 2023 Maxim Integrated Products, Inc., All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL MAXIM INTEGRATED BE LIABLE FOR ANY CLAIM, DAMAGES
- * OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Except as contained in this notice, the name of Maxim Integrated
- * Products, Inc. shall not be used except as stated in the Maxim Integrated
- * Products, Inc. Branding Policy.
- *
- * The mere transfer of this software does not imply any licenses
- * of trade secrets, proprietary technology, copyrights, patents,
- * trademarks, maskwork rights, or any other form of intellectual
- * property whatsoever. Maxim Integrated Products, Inc. retains all
- * ownership rights.
- *
- ******************************************************************************/
 #include <string.h>
 #include <math.h>
 
@@ -138,7 +106,7 @@ int update_info_field(Person *p);
 void FLC0_IRQHandler(void);
 int init_db(void);
 int init_status(void);
-int add_person(Person *p);
+int add_person(Person *p, uint8_t id);
 void flash_to_cnn(Person *p, uint32_t cnn_location);
 void setup_irqs(void);
 void read_db(Person *p);
@@ -148,158 +116,6 @@ void get_name(Person *p);
 void show_face(void);
 
 /***** Functions *****/
-
-void get_name(Person *p)
-{
-    show_keyboard();
-    int key = 0;
-    int len = 0;
-    text_t text_buffer;
-    area_t area_buffer;
-
-    strncpy(p->name, "\0\0\0\0\0\0", 7);
-
-    while (1) {
-        key = MXC_TS_GetKey();
-        if (key == 0)
-            continue;
-        else if (key == 28) {
-            p->name[len] = '\0'; // null terminator
-            break;
-        } else if (key == 27 && len > 0) {
-            len--;
-            p->name[len] = '\0';
-
-            text_buffer.data = p->name;
-            text_buffer.len = 6;
-            area_buffer.y = 300;
-            area_buffer.x = 120;
-            area_buffer.h = 20;
-            area_buffer.w = 100;
-            MXC_TFT_ClearArea(&area_buffer, 4);
-            MXC_TFT_PrintFont(120, 300, font, &text_buffer, NULL);
-        } else if (key != 27 && len < 6) // 7th character is reserved for null terminator
-        {
-            printf("key: %d\n", key);
-            p->name[len] = alphabet[key - 1][0];
-            len++;
-            text_buffer.data = p->name;
-            text_buffer.len = 7;
-            MXC_TFT_PrintFont(120, 300, font, &text_buffer, NULL);
-        }
-    }
-
-    MXC_TFT_ClearScreen();
-    MXC_TS_RemoveAllButton();
-}
-
-void show_keyboard()
-{
-    // Description : Shows the keyboard on the TFT screen
-    //Clear the screen and the buttons
-    MXC_TFT_ClearScreen();
-    MXC_TS_RemoveAllButton();
-
-    //Add the buttons
-    area_t area_buffer;
-    text_t text_buffer;
-
-    for (int i = 0; i < 26; i++) {
-        if (i / 4 == 0) {
-            MXC_TS_AddButton(40, 180 - (i % 4) * 50, 70, 220 - (i % 4) * 50, i + 1);
-            area_buffer.y = 20;
-            area_buffer.x = 20 + (i % 4) * 50;
-            area_buffer.h = 30;
-            area_buffer.w = 40;
-            text_buffer.data = alphabet[i];
-            text_buffer.len = 1;
-            MXC_TFT_FillRect(&area_buffer, 0xFD20);
-            MXC_TFT_PrintFont(area_buffer.x + 15, area_buffer.y + 12, font, &text_buffer, NULL);
-        } else if (i / 4 == 1) {
-            MXC_TS_AddButton(80, 180 - (i % 4) * 50, 110, 220 - (i % 4) * 50, i + 1);
-            area_buffer.y = 60;
-            area_buffer.x = 20 + (i % 4) * 50;
-            area_buffer.h = 30;
-            area_buffer.w = 40;
-            text_buffer.data = alphabet[i];
-            text_buffer.len = 1;
-            MXC_TFT_FillRect(&area_buffer, 0xED20);
-            MXC_TFT_PrintFont(area_buffer.x + 15, area_buffer.y + 12, font, &text_buffer, NULL);
-        } else if (i / 4 == 2) {
-            MXC_TS_AddButton(120, 180 - (i % 4) * 50, 150, 220 - (i % 4) * 50, i + 1);
-            area_buffer.y = 100;
-            area_buffer.x = 20 + (i % 4) * 50;
-            area_buffer.h = 30;
-            area_buffer.w = 40;
-            text_buffer.data = alphabet[i];
-            text_buffer.len = 1;
-            MXC_TFT_FillRect(&area_buffer, 0xDD20);
-            MXC_TFT_PrintFont(area_buffer.x + 15, area_buffer.y + 12, font, &text_buffer, NULL);
-        } else if (i / 4 == 3) {
-            MXC_TS_AddButton(155, 180 - (i % 4) * 50, 185, 220 - (i % 4) * 50, i + 1);
-            area_buffer.y = 140;
-            area_buffer.x = 20 + (i % 4) * 50;
-            area_buffer.h = 30;
-            area_buffer.w = 40;
-            text_buffer.data = alphabet[i];
-            text_buffer.len = 1;
-            MXC_TFT_FillRect(&area_buffer, 0xCD20);
-            MXC_TFT_PrintFont(area_buffer.x + 15, area_buffer.y + 12, font, &text_buffer, NULL);
-        } else if (i / 4 == 4) {
-            MXC_TS_AddButton(190, 180 - (i % 4) * 50, 220, 220 - (i % 4) * 50, i + 1);
-            area_buffer.y = 180;
-            area_buffer.x = 20 + (i % 4) * 50;
-            area_buffer.h = 30;
-            area_buffer.w = 40;
-            text_buffer.data = alphabet[i];
-            text_buffer.len = 1;
-            MXC_TFT_FillRect(&area_buffer, 0xBD20);
-            MXC_TFT_PrintFont(area_buffer.x + 15, area_buffer.y + 12, font, &text_buffer, NULL);
-        } else if (i / 4 == 5) {
-            MXC_TS_AddButton(225, 180 - (i % 4) * 50, 255, 220 - (i % 4) * 50, i + 1);
-            area_buffer.y = 220;
-            area_buffer.x = 20 + (i % 4) * 50;
-            area_buffer.h = 30;
-            area_buffer.w = 40;
-            text_buffer.data = alphabet[i];
-            text_buffer.len = 1;
-            MXC_TFT_FillRect(&area_buffer, 0xAD20);
-            MXC_TFT_PrintFont(area_buffer.x + 15, area_buffer.y + 12, font, &text_buffer, NULL);
-        } else if (i / 4 == 6) {
-            MXC_TS_AddButton(260, 180 - (i % 4) * 50, 290, 220 - (i % 4) * 50, i + 1);
-            area_buffer.y = 260;
-            area_buffer.x = 20 + (i % 4) * 50;
-            area_buffer.h = 30;
-            area_buffer.w = 40;
-            text_buffer.data = alphabet[i];
-            text_buffer.len = 1;
-            MXC_TFT_FillRect(&area_buffer, 0x9D20);
-            MXC_TFT_PrintFont(area_buffer.x + 15, area_buffer.y + 12, font, &text_buffer, NULL);
-        }
-    }
-
-    //Add Bckspc button
-    MXC_TS_AddButton(265, 80, 295, 120, 27);
-    area_buffer.y = 260;
-    area_buffer.x = 120;
-    area_buffer.h = 30;
-    area_buffer.w = 40;
-    text_buffer.data = "Bck";
-    text_buffer.len = 3;
-    MXC_TFT_FillRect(&area_buffer, 0x9D20);
-    MXC_TFT_PrintFont(area_buffer.x, area_buffer.y + 12, font, &text_buffer, NULL);
-
-    //Add OK button
-    MXC_TS_AddButton(265, 30, 295, 70, 28);
-    area_buffer.y = 260;
-    area_buffer.x = 170;
-    area_buffer.h = 30;
-    area_buffer.w = 40;
-    text_buffer.data = "OK";
-    text_buffer.len = 2;
-    MXC_TFT_FillRect(&area_buffer, 0x9D20);
-    MXC_TFT_PrintFont(area_buffer.x + 5, area_buffer.y + 12, font, &text_buffer, NULL);
-}
 
 void read_db(Person *p)
 {
@@ -604,49 +420,27 @@ void show_face()
     MXC_TFT_SetRotation(ROTATE_180);
 }
 //============================================================================
-int add_person(Person *p)
+int add_person(Person *p, uint8_t id)
 {
     int err = 0;
-    int init_reshow = 0;
-    int init_faceid = 0;
     int init_come_closer = 0;
     face_detected = 0;
     text_t text_buffer;
+    char t = (char)id;
+
 
     if (p->embeddings_count == 0) {
-        PR_DEBUG("Enter name: ");
-#ifdef TS_ENABLE
-        get_name(p); // Get the name from TS
-#else
-        scanf("%5s", p->name);
-#endif
+        
+        strncpy(p->name, "\0\0\0\0\0\0", 7);
+        p->name[0] = t;
         PR_DEBUG("Name entered: %s\n", p->name);
     }
 
-    MXC_TS_AddButton(260, 160, 320, 240, 2);
-
-    MXC_TFT_FillRect(&area_2, 0xFD20);
-
-    text_buffer.data = "Capture";
-    text_buffer.len = 7;
-    MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
     // Re-enable the ICC
+    int ok_streak = 0;
     MXC_ICC_Enable(MXC_ICC0);
     while (!face_ok) // Get user's feedback for the captured image
     {
-        init_faceid = 0;
-        while (!face_detected || !capture_key) {
-            if (!init_faceid) {
-                MXC_TFT_ClearScreen();
-                MXC_TS_RemoveAllButton();
-                MXC_TS_AddButton(260, 160, 320, 240, 2);
-                MXC_TFT_FillRect(&area_2, 0xFD20);
-                text_buffer.data = "Capture";
-                text_buffer.len = 7;
-                MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
-                init_faceid = 1;
-            }
-
             face_detection();
             if (face_detected) {
                 printf("Box width: %d\n", box[2] - box[0]);
@@ -660,79 +454,30 @@ int add_person(Person *p)
                         MXC_TFT_PrintFont(60, 300, font, &text_buffer, NULL);
                         init_come_closer = 1;
                     }
-
+                    ok_streak = 0;
                     continue;
                 } else {
                     MXC_TFT_ClearArea(&area, 4);
                     init_come_closer = 0;
-                }
-            }
+                } ok_streak++;
 
-#ifdef TS_ENABLE
-            key = MXC_TS_GetKey();
-            if (key == 2) {
-                capture_key = 1;
-                MXC_TFT_FillRect(&area_2, 0x9D20);
-                text_buffer.data = "Capture";
-                text_buffer.len = 7;
-                MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
-            }
-
-#endif
-
-            //face_detected = 0;
-        }
-        capture_key = 0;
-        face_detected = 0;
-
-        show_face();
-
-        if (!init_reshow) {
-            //Clear buttons
-            MXC_TFT_FillRect(&area_1, 0xFD20);
-            MXC_TFT_FillRect(&area_2, 0xFD20);
-            MXC_TS_AddButton(260, 0, 320, 80, 1);
-            MXC_TS_AddButton(260, 160, 320, 240, 2);
-
-            text_buffer.data = "OK";
-            text_buffer.len = 2;
-            MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
-
-            text_buffer.data = "Retry";
-            text_buffer.len = 5;
-            MXC_TFT_PrintFont(162, 270, font, &text_buffer, NULL);
-            init_reshow = 1;
-        }
-
-        //Show captured face
-        // Ask user if he/she is ok with the image
-        // If not, repeat the process
-        key = 0;
-        while (key == 0) //Wait for user's feedback, 0 is the default value
-        {
-            key = MXC_TS_GetKey();
-            if (key == 2) {
+            } if(ok_streak > 2){
                 face_ok = 1;
-                init_reshow = 0;
-                PR_DEBUG("Face is ok\n");
-            } else if (key == 1) {
-                face_ok = 0;
-                init_reshow = 0;
-                PR_DEBUG("Face is not ok\n");
+                break;
             }
+
         }
-    }
     face_ok = 0;
-    capture_key = 0;
     MXC_ICC_Disable(MXC_ICC0); //Disable ICC for flash write
     face_id();
 
     PR_DEBUG("This is record\n");
 
     //Calculate the write address 4 bytes for magic key, 8 bytes for each person, 64 bytes for each embedding
-    PR_DEBUG("p.id %d", p->id);
-    PR_DEBUG("p.embeddings_count %d", p->embeddings_count);
-    PR_DEBUG("Total embeddings_count %d", p->db_embeddings_count);
+    printf("p.name %c\n", p->name);
+    printf("p.id %d\n", p->id);
+    printf("p.embeddings_count %d\n", p->embeddings_count);
+    printf("Total embeddings_count %d\n", p->db_embeddings_count);
     uint32_t write_address = (DB_ADDRESS + 4) + ((p->id - 1) * 4 * 2) +
                              ((p->embeddings_count + p->db_embeddings_count) * 64);
 
@@ -759,60 +504,20 @@ int add_person(Person *p)
                      DEFAULT_EMBS_NUM)); // Load a single embedding into CNN_3
     p->embeddings_count += 1;
 
-    record_mode = 0;
-    PR_DEBUG("To continue to capture press P2.6, to return to main menu press P2.7\n");
 
-    text_buffer.data = "Cnt?";
-    text_buffer.len = 4;
-    MXC_TFT_FillRect(&area_2, 0xFD20);
-    MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
 
-    MXC_TS_AddButton(260, 0, 320, 80, 1);
-
-    MXC_TFT_FillRect(&area_1, 0xFD20);
-
-    text_buffer.data = "Exit";
-    text_buffer.len = 4;
-    MXC_TFT_PrintFont(162, 270, font, &text_buffer, NULL);
 
     MXC_Delay(MSEC(1000));
-    key = MXC_TS_GetKey(); //Dumb Buffer
-    key = 0;
-    capture_key = 0;
-    while (!capture_key) {
-#ifdef TS_ENABLE
-        key = MXC_TS_GetKey();
-        if (key == 1) {
-            record_mode = 1;
-        } else if (key == 2) {
-            capture_key = 1;
-        }
-#endif
-        if (record_mode) { //If record mode is off, return to main menu
 
-            err = update_info_field(p); //Update the information field
-
-            p->db_embeddings_count = p->db_embeddings_count + p->embeddings_count;
-
-            MXC_TFT_ClearScreen();
-            MXC_TS_RemoveAllButton();
-
-            if (err) {
-                printf("Failed to update info field with error code %i!\n", err);
-                return err;
-            }
-
-            err = -1; // -1 is the exit code
-            return err;
-        }
-    }
-
-    capture_key = 0;
+    err = update_info_field(p); //Update the information fiel
+    p->db_embeddings_count = p->db_embeddings_count + p->embeddings_count;
     MXC_TFT_ClearScreen();
-    MXC_TS_RemoveAllButton();
-
-    err = add_person(p);
-
+    if (err) {
+        printf("Failed to update info field with error code %i!\n", err);
+        return err;
+    }
+    
+    err = -1; // -1 is the exit code
     return err;
 }
 
@@ -944,7 +649,7 @@ void setup_irqs()
     isr_cnt = 0;
 }
 
-int record()
+int record(uint8_t id)
 {
     Person p;
     Person *pptr = &p;
@@ -990,7 +695,7 @@ int record()
         return -1;
     }
 
-    err = add_person(pptr);
+    err = add_person(pptr, id);
     if (err == -1) { // error code -1 means return to main menu
         err = update_status(pptr);
         if (err) {
