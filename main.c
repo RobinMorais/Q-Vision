@@ -342,7 +342,6 @@ int main(void)
     comm_init(19230);
     comm_start();
     uint8_t value = 1;
-    // comm_send(0x12,0x01, &tick, sizeof(tick));
 
     while (1) {
         int loop_time = utils_get_time_ms();
