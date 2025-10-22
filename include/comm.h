@@ -17,7 +17,7 @@
    - P = len - 4 (because addr,len,nlen,chk take 4 bytes)
    -------------------------------------------------------------------------- */
 
-#define COMM_MAX_FRAME_BYTES   255u
+#define COMM_MAX_FRAME_BYTES   128u
 #define COMM_MAX_PAYLOAD       (COMM_MAX_FRAME_BYTES - 4u)
 
 /* Public frame type returned by comm_get_message(). 
@@ -50,17 +50,7 @@ bool comm_message_ready(void);
  */
 bool comm_get_message(frame *out);
 
-/** Build and send a Qbus frame on UART2.
- *  @param a  destination address
- *  @param c  command byte (will be payload[0])
- *  @param d  pointer to data bytes to follow the command (may be NULL if l==0)
- *  @param l  length of data bytes (not counting the command)
- *  @return total bytes sent (L = 5 + l) on success, 0 on error.
- */
 int  comm_send(uint8_t a, uint8_t c, const uint8_t *d, uint8_t l);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* COMM_H */
