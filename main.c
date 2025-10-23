@@ -347,23 +347,23 @@ int main(void)
         int loop_time = utils_get_time_ms();
 
         if(comm_message_ready()){
-            frame f;
-            if(comm_get_message(&f)){
+            frame q;
+            if(comm_get_message(&q)){
                 
                 printf("[RX] addr=0x%02X len=%u plen=%u chk=0x%02X\n",
-                f.addr, f.len, f.plen, f.chk);
+                q.addr, q.len, q.plen, q.chk);
                 
-                if (f.plen > 0) {
-                    printf("cmd=0x%02X\n", f.payload[0]);
+                if (q.plen > 0) {
+                    printf("cmd=0x%02X\n", q.payload[0]);
 
-                    switch (f.payload[0])
+                    switch (q.payload[0])
                     {
                     case 0xA0:
-                        if (f.plen > 1) {
+                        if (q.plen > 1) {
                             printf("data: ");
-                            for (int i = 1; i < f.plen; i++) {
-                                printf("%02X ", f.payload[i]);
-                                uint8_t id = f.payload[i];
+                            for (int i = 1; i < q.plen; i++) {
+                                printf("%02X ", q.payload[i]);
+                                uint8_t id = q.payload[i];
                                 record(id);
                                 comm_send(2,150,NULL,0);
                             }
@@ -372,7 +372,7 @@ int main(void)
                         }
                         break;
                     case 0xFA:
-                        comm_send(2,250,&value,8);
+                        comm_send(2,250,&value,sizeof(value));
                     default:
                         break;
                     }
@@ -384,10 +384,11 @@ int main(void)
 
             if (face_detected) {
                 face_id();
-                const char* name = get_fname();
-                if (strcmp(name, "Unknown")){
-                    uint8_t id = (uint8_t)name[0];
-                    comm_send(01,03,&id, sizeof(id));
+                char name = get_fname();
+                if (name != ' '){
+                    printf("found name");
+                    uint8_t id = (uint8_t)name;
+                    comm_send(02,03,&id, sizeof(id));
                 }
                 face_detected = 0;
             }

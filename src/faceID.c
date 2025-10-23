@@ -65,31 +65,23 @@ uint8_t box_width;
 uint8_t box_height;
 
 
-static char     s_last_name[7] = {0}; // 6 + '\0'
+static char s_last_name;
 /********************************* Functions **************************/
 
-void set_fname(const char* n)
+
+void set_fname(char n)
 {
-    if (!n) { s_last_name[0] = '\0'; return; }
-    // Copy max 6 bytes; always terminate
-    for (int i = 0; i < 6; ++i) {
-        char c = n[i];
-        s_last_name[i] = c ? c : '\0';
-        if (!c) { // early termination
-            for (int j = i + 1; j < 6; ++j) s_last_name[j] = '\0';
-            break;
-        }
+    if (!n) {
+        s_last_name = ' ';
+        return;
     }
-    s_last_name[6] = '\0';
+    s_last_name = n;
 }
 
-
-
-const char* get_fname(void)
+char get_fname(void)
 {
     return s_last_name;
 }
-
 
 #ifndef USE_BOX_ONLY
 void calculate_box_offset(void)
@@ -590,9 +582,13 @@ static void run_cnn_2(int x_offset, int y_offset)
     if (max_emb > Threshold) {
         name = (char *)names[max_emb_index];
         PR_DEBUG("subject name: %s \n", name);
+        set_fname(name[0]);
+
     } else {
         PR_DEBUG("Unknown subject \n");
         name = "Unknown";
+        set_fname(' ');
+
     }
 
 
@@ -603,7 +599,6 @@ static void run_cnn_2(int x_offset, int y_offset)
     MXC_TFT_ClearArea(&area, 4);
     MXC_TFT_PrintFont(CAPTURE_X, CAPTURE_Y, font, &printResult, NULL);
 #endif
-    set_fname(name);
 }
 
 #ifdef LP_MODE_ENABLE

@@ -23,8 +23,8 @@
 // Data input: HWC (little data): 160x120x3
 #define DATA_SIZE_IN_ID (112 * 112 * 3)
 
-void set_fname(const char* n);
-const char* get_fname(void);
+void set_fname(char n);
+char get_fname(void);
 
 int face_id(void);
 
