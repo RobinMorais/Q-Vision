@@ -419,6 +419,7 @@ void show_face()
     __enable_irq(); // Enable IRQ to resume communication with touch screen
     MXC_TFT_SetRotation(ROTATE_180);
 }
+
 //============================================================================
 int add_person(Person *p, uint8_t id)
 {
@@ -427,6 +428,15 @@ int add_person(Person *p, uint8_t id)
     face_detected = 0;
     text_t text_buffer;
     char t = (char)id;
+    mxc_gpio_cfg_t cfg = {
+        .port  = MXC_GPIO1,
+        // .mask  = MXC_GPIO_PIN_0 | MXC_GPIO_PIN_1,
+        .mask  = MXC_GPIO_PIN_0 | MXC_GPIO_PIN_3 | MXC_GPIO_PIN_2,
+        .func  = MXC_GPIO_FUNC_OUT,
+        .pad   = MXC_GPIO_PAD_NONE,
+        .vssel = MXC_GPIO_VSSEL_VDDIOH // LEDs usually on VDDIOH
+    };
+    MXC_GPIO_Config(&cfg);
 
 
     if (p->embeddings_count == 0) {
@@ -445,28 +455,47 @@ int add_person(Person *p, uint8_t id)
             if (face_detected) {
                 printf("Box width: %d\n", box[2] - box[0]);
                 printf("Box height: %d\n", box[3] - box[1]);
-                if ((box[2] - box[0]) < 70 || (box[3] - box[1]) < 110) {
-                    face_detected = 0;
+                printf("y1, y2: %d %d\n", box[1], box[3]);
+                if((box[1]+((box[3] - box[1])/2)) < 95 ){
+                    printf("too high\n");
+                    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_0);
+                    MXC_GPIO_OutSet(MXC_GPIO1, MXC_GPIO_PIN_3);
+                }else if ((box[1]+((box[3] - box[1])/2)) > 110) {
+                    printf("too low\n");
+                    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_3);
+                    MXC_GPIO_OutSet(MXC_GPIO1, MXC_GPIO_PIN_0);
+                }else{
+                    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_3);
+                    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_0);
+                    if ((box[2] - box[0]) < 70 || (box[3] - box[1]) < 110) {
+                        face_detected = 0;
 
-                    if (!init_come_closer) {
-                        text_buffer.data = "Come Closer";
-                        text_buffer.len = 11;
-                        MXC_TFT_PrintFont(60, 300, font, &text_buffer, NULL);
-                        init_come_closer = 1;
-                    }
-                    ok_streak = 0;
-                    continue;
-                } else {
-                    MXC_TFT_ClearArea(&area, 4);
-                    init_come_closer = 0;
-                } ok_streak++;
-
-            } if(ok_streak > 2){
+                        if (!init_come_closer) {
+                            text_buffer.data = "Come Closer";
+                            text_buffer.len = 11;
+                            MXC_TFT_PrintFont(60, 300, font, &text_buffer, NULL);
+                            MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_2);
+                            init_come_closer = 1;
+                        }
+                        ok_streak = 0;
+                        continue;
+                    } else {
+                        MXC_TFT_ClearArea(&area, 4);
+                        init_come_closer = 0;
+                    } 
+                    ok_streak++;
+                    MXC_GPIO_OutSet(MXC_GPIO1, MXC_GPIO_PIN_2);
+                }  
+            } if(ok_streak > 10){
                 face_ok = 1;
                 break;
             }
 
         }
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_3);
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_0);
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_2);
+
     face_ok = 0;
     MXC_ICC_Disable(MXC_ICC0); //Disable ICC for flash write
     face_id();
