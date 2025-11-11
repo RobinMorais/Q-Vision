@@ -39,6 +39,7 @@ extern volatile uint8_t face_detected;
 volatile uint8_t record_mode = 0;
 volatile uint8_t capture_key = 0;
 volatile char names[1024][7];
+volatile char name;
 
 #if 0 // Custom camera settings
 static const uint8_t camera_settings[][2] = {
@@ -180,17 +181,6 @@ void init_names(void)
 #pragma GCC diagnostic pop
 }
 
-void gpio_isr(void *cbdata)
-{
-    record_mode = 1; //Toggle record mode
-    PR_DEBUG("TOGGLED record_mode = %d\n", record_mode);
-}
-
-void gpio_isr_2(void *cbdata)
-{
-    capture_key = 1;
-}
-
 #ifdef TFT_ENABLE
 area_t area = { 0, 290, 240, 30 };
 area_t area_1 = { 160, 260, 80, 30 };
@@ -304,8 +294,7 @@ int main(void)
 #endif
 
     // Setup the camera image dimensions, pixel format and data acquiring details.
-    ret =
-        camera_setup(HEIGHT_DET, WIDTH_DET, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
+    ret = camera_setup(HEIGHT_DET, WIDTH_DET, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
 
     if (ret != STATUS_OK) {
         PR_ERR("Error returned from setting up camera. Error %d\n", ret);
@@ -344,64 +333,102 @@ int main(void)
     uint8_t value = 1;
 
     while (1) {
+
         int loop_time = utils_get_time_ms();
 
         if(comm_message_ready()){
+
             frame q;
+
             if(comm_get_message(&q)){
                 
                 printf("[RX] addr=0x%02X len=%u plen=%u chk=0x%02X\n",
                 q.addr, q.len, q.plen, q.chk);
                 
                 if (q.plen > 0) {
+
                     printf("cmd=0x%02X\n", q.payload[0]);
 
-                    switch (q.payload[0])
-                    {
+                    switch (q.payload[0]) {
+                    // case: message to register user with id
                     case 0xA0:
                         if (q.plen > 1) {
+
                             printf("data: ");
+
                             for (int i = 1; i < q.plen; i++) {
+
                                 printf("%02X ", q.payload[i]);
                                 uint8_t id = q.payload[i];
                                 record(id);
                                 comm_send(2,150,NULL,0);
+
                             }
-                        } else{
+                        } else {
+
                             printf("no data");
+
                         }
                         break;
+
+                    // case: polling if user is present
+                    case 0xF1:
+
+                        if (name != ' '){
+
+                        uint8_t id = (uint8_t)name;
+                        comm_send(02,03,&id, sizeof(id));
+
+                        } else {
+
+                            uint8_t id = 255;
+                            comm_send(02,03,&id,sizeof(id));
+
+                        }
+
+                        break;  
+
+                    // case: polling message 
                     case 0xFA:
+
                         comm_send(2,250,&value,sizeof(value));
-                    default:
                         break;
+
+                    // no known command
+                    default:
+                    
+                        break;
+
                     }
                 }
 
             }
         } else {
+
             face_detection();
 
             if (face_detected) {
+
                 face_id();
-                char name = get_fname();
-                if (name != ' '){
-                    printf("found name");
-                    uint8_t id = (uint8_t)name;
-                    comm_send(02,03,&id, sizeof(id));
-                }
+                name = get_fname();
                 face_detected = 0;
+
             }
                 
 #ifdef TFT_ENABLE
             else {
+
                 MXC_TFT_ClearArea(&area, 4);
+
             }
 #endif
-    }
+        }
+
         loop_time = utils_get_time_ms() - loop_time;
         printf("Loop time: %dms\n", loop_time);
+
     }
 
     return 0;
+
 }
