@@ -31,11 +31,6 @@ typedef struct {
     uint8_t  payload[COMM_MAX_PAYLOAD];      /* cmd + data[...] */
 } frame;
 
-/* --------------------------------------------------------------------------
-   Public API
-   -------------------------------------------------------------------------- */
-
-
 int  comm_init(uint32_t baud);
 
 /** Start asynchronous, one-byte-at-a-time RX on UART1. */
