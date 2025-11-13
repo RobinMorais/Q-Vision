@@ -141,19 +141,7 @@ static void run_cnn_1(int x_offset, int y_offset)
 
     // Get the details of the image from the camera driver.
     camera_get_image(&raw, &imgLen, &w, &h);
-#ifdef TFT_ENABLE
-    int tft_time = utils_get_time_ms();
-    MXC_TFT_SetRotation(ROTATE_270);
-    __disable_irq(); // Disable IRQ to block communication with touch screen
-    MXC_TFT_Stream(X_START, Y_START, w, h);
-    // Stream captured image to TFT display
-    TFT_SPI_Transmit(raw, w * h * 2);
-    __enable_irq(); // Enable IRQ to resume communication with touch screen
-    MXC_TFT_SetRotation(ROTATE_180);
 
-    tft_time = utils_get_time_ms() - tft_time;
-    PR_INFO("TFT Time : %dms", tft_time);
-#endif
     cnn_1_load_bias(); // Load bias data of CNN_1
     // Bring CNN_1 state machine of FaceDetection model into consistent state
     *((volatile uint32_t *)0x51000000) = 0x00100008; // Stop SM

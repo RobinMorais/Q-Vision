@@ -45,10 +45,6 @@ static void run_cnn_2(int x_offset, int y_offset);
 static void ARM_low_power(int lp_mode);
 #endif
 
-#ifdef TFT_ENABLE
-static int font = (int)&Liberation_Sans16x16[0];
-#endif //#ifdef TFT_ENABLE
-
 static int box_x_offset = 0;
 static int box_y_offset = 0;
 
@@ -208,44 +204,12 @@ int face_id(void)
 #ifndef USE_BOX_ONLY
 static void process_img(int x_offset, int y_offset)
 {
-#ifdef TFT_ENABLE
-    int x1, x2, y1, y2;
-    uint32_t pass_time = 0;
-#endif
     uint32_t imgLen;
     uint32_t w, h;
     uint8_t *raw;
 
     // Get the details of the image from the camera driver.
     camera_get_image(&raw, &imgLen, &w, &h);
-
-#ifdef TFT_ENABLE
-    pass_time = utils_get_time_ms();
-
-    int ret;
-    int lum;
-    text_t printResult;
-    // Read luminance level from camera
-    ret = camera_get_luminance_level(&lum);
-
-    if (ret != STATUS_OK) {
-        PR_ERR("Camera Error %d", ret);
-    } else {
-        //PR_DEBUG("Lum = %d", lum);
-
-        // Warn if luminance level is low
-        if (lum < LOW_LIGHT_THRESHOLD) {
-            //PR_WARN("Low Light!");
-            printResult.data = " LOW LIGHT ";
-            printResult.len = strlen(printResult.data);
-            //area_t area      = {100, 290, 200, 30};
-            MXC_TFT_ClearArea(&area, 4);
-            MXC_TFT_PrintFont(CAPTURE_X, CAPTURE_Y, font, &printResult, NULL);
-        }
-    }
-
-    PR_INFO("Screen print time : %d", utils_get_time_ms() - pass_time);
-#endif //#ifdef TFT_ENABLE
 }
 #endif // #ifndef USE_BOX_ONLY
 
@@ -591,14 +555,6 @@ static void run_cnn_2(int x_offset, int y_offset)
 
     }
 
-
-#ifdef TFT_ENABLE
-    text_t printResult;
-    printResult.data = name;
-    printResult.len = strlen(name);
-    MXC_TFT_ClearArea(&area, 4);
-    MXC_TFT_PrintFont(CAPTURE_X, CAPTURE_Y, font, &printResult, NULL);
-#endif
 }
 
 #ifdef LP_MODE_ENABLE

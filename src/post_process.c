@@ -458,10 +458,6 @@ void localize_objects(void)
                 int x2 = HEIGHT_DET * (xy[3]) + X_START - 1;
                 int y2 = WIDTH_DET * (xy[0]) + Y_START;
 
-                MXC_TFT_SetRotation(ROTATE_270);
-                MXC_TFT_Rectangle(x1, y1, x2, y2, 0xFD20);
-                MXC_TFT_SetRotation(ROTATE_180);
-
 #if 0
 			    PR_DEBUG("class: %d, prior_idx: %d, prior: %d, x1: %.2f, y1: %.2f, x2: %.2f, y2: "
                        "%.2f \n",
@@ -496,9 +492,6 @@ void localize_objects(void)
         int x2 = HEIGHT_DET * (xy[3]) + X_START - 1;
         int y2 = WIDTH_DET * (xy[0]) + Y_START;
 
-        MXC_TFT_SetRotation(ROTATE_270);
-        MXC_TFT_Rectangle(x1, y1, x2, y2, 0xFD20);
-        MXC_TFT_SetRotation(ROTATE_180);
         face_detected = 1;
         //draw_obj_rect(max_xy, WIDTH_DET, HEIGHT_DET);
     }

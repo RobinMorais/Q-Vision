@@ -84,9 +84,9 @@ volatile uint32_t db_flash_emb_count;
 extern volatile char
     names[1024][7]; // 1024 names of 7 bytes each, as we support 1024 people in the database
 extern volatile int32_t output_buffer[16];
-extern unsigned int touch_x, touch_y;
+// extern unsigned int touch_x, touch_y;
 extern volatile uint8_t face_detected;
-extern volatile uint8_t capture_key;
+// extern volatile uint8_t capture_key;
 extern volatile uint8_t record_mode;
 volatile uint8_t face_ok = 0;
 extern area_t area;
@@ -94,10 +94,10 @@ extern area_t area_1;
 extern area_t area_2;
 extern uint8_t box[4]; // x1, y1, x2, y2
 static const uint32_t baseaddr[] = BASEADDR;
-int key;
+// int key;
 char alphabet[26][1] = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
                          "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
-static int font = (int)&Liberation_Sans16x16[0];
+// static int font = (int)&Liberation_Sans16x16[0];
 
 /***** Prototypes *****/
 void get_status(Person *p);
@@ -111,9 +111,7 @@ void flash_to_cnn(Person *p, uint32_t cnn_location);
 void setup_irqs(void);
 void read_db(Person *p);
 bool check_db(void);
-void show_keyboard(void);
 void get_name(Person *p);
-void show_face(void);
 
 /***** Functions *****/
 
@@ -325,100 +323,6 @@ bool check_db()
 
     return (magic_read == MAGIC);
 }
-//============================================================================
-void show_face()
-{
-    uint32_t imgLen;
-    uint32_t w, h;
-    uint8_t *raw;
-    uint8_t img_buffer[HEIGHT_ID * WIDTH_ID * 2]; //112x112x2
-    uint8_t *img_ptr = img_buffer;
-
-    uint8_t x_loc;
-    uint8_t y_loc;
-    float y_prime;
-    float x_prime;
-    int adj_boxes[4];
-    int diff = 0;
-
-    uint8_t box_width = box[2] - box[0];
-    uint8_t box_height = box[3] - box[1];
-
-    MXC_TFT_ClearScreen();
-
-    if (box_width > box_height) {
-        diff = box_width - box_height;
-        PR_DEBUG("width is bigger diff: %d", diff);
-        PR_DEBUG("x1: %d, y1: %d, x2: %d, y2: %d", box[0], box[1], box[2], box[3]);
-        if (diff % 2 == 0) {
-            adj_boxes[1] = (int)box[1] - diff / 2;
-            adj_boxes[3] = (int)box[3] + diff / 2;
-        } else {
-            adj_boxes[1] = (int)box[1] - diff / 2;
-            adj_boxes[3] = (int)box[3] + diff / 2 + 1;
-        }
-        adj_boxes[0] = (int)box[0];
-        adj_boxes[2] = (int)box[2];
-        PR_DEBUG("ADJUSTED x1: %d, y1: %d, x2: %d, y2: %d", adj_boxes[0], adj_boxes[1],
-                 adj_boxes[2], adj_boxes[3]);
-    } else {
-        diff = box_height - box_width;
-        PR_DEBUG("height is bigger diff: %d", diff);
-        PR_DEBUG("x1: %d, y1: %d, x2: %d, y2: %d", box[0], box[1], box[2], box[3]);
-        if (diff % 2 == 0) {
-            adj_boxes[0] = (int)box[0] - diff / 2;
-            adj_boxes[2] = (int)box[2] + diff / 2;
-        } else {
-            adj_boxes[0] = (int)box[0] - diff / 2;
-            adj_boxes[2] = (int)box[2] + diff / 2 + 1;
-        }
-        adj_boxes[1] = (int)box[1];
-        adj_boxes[3] = (int)box[3];
-        PR_DEBUG("ADJUSTED x1: %d, y1: %d, x2: %d, y2: %d", adj_boxes[0], adj_boxes[1],
-                 adj_boxes[2], adj_boxes[3]);
-    }
-
-    int x1 = adj_boxes[0];
-    int y1 = adj_boxes[1];
-    box_height = adj_boxes[3] - adj_boxes[1];
-    box_width = adj_boxes[2] - adj_boxes[0];
-
-    camera_get_image(&raw, &imgLen, &w, &h);
-    PR_DEBUG("w , h , %d, %d\n", w, h);
-    uint8_t *data = raw;
-
-    // Get the details of the image from the camera driver.
-
-    for (int i = 0; i < HEIGHT_ID; i++) {
-        y_prime = ((float)(i) / HEIGHT_ID) * box_height;
-        y_loc = (uint8_t)(MIN(round(y_prime), box_height - 1));
-
-        for (int j = 0; j < WIDTH_ID; j++) {
-            x_prime = ((float)(j) / WIDTH_ID) * box_width;
-            x_loc = (uint8_t)(MIN(round(x_prime), box_width - 1));
-            if ((x1 + x_loc < 0) || (y1 + y_loc < 0) || (x1 + x_loc >= WIDTH_DET) ||
-                (y1 + y_loc >= HEIGHT_DET)) {
-                img_buffer[(j * BYTE_PER_PIXEL * HEIGHT_ID) + (i * BYTE_PER_PIXEL)] = 0;
-                img_buffer[(j * BYTE_PER_PIXEL * HEIGHT_ID) + (i * BYTE_PER_PIXEL) + 1] = 0;
-            } else {
-                img_buffer[(j * BYTE_PER_PIXEL * HEIGHT_ID) + (i * BYTE_PER_PIXEL)] =
-                    data[((x1 + x_loc) * BYTE_PER_PIXEL * HEIGHT_DET) +
-                         ((y1 + y_loc) * BYTE_PER_PIXEL)];
-                img_buffer[(j * BYTE_PER_PIXEL * HEIGHT_ID) + (i * BYTE_PER_PIXEL) + 1] =
-                    data[((x1 + x_loc) * BYTE_PER_PIXEL * HEIGHT_DET) +
-                         ((y1 + y_loc) * BYTE_PER_PIXEL) + 1];
-            }
-        }
-    }
-
-    MXC_TFT_SetRotation(ROTATE_270);
-    __disable_irq(); // Disable IRQ to block communication with touch screen
-    MXC_TFT_Stream(SHOW_START_X, SHOW_START_Y, HEIGHT_ID, WIDTH_ID);
-    // Stream captured image to TFT display
-    TFT_SPI_Transmit(img_ptr, HEIGHT_ID * WIDTH_ID * 2);
-    __enable_irq(); // Enable IRQ to resume communication with touch screen
-    MXC_TFT_SetRotation(ROTATE_180);
-}
 
 //============================================================================
 int add_person(Person *p, uint8_t id)
@@ -426,7 +330,6 @@ int add_person(Person *p, uint8_t id)
     int err = 0;
     int init_come_closer = 0;
     face_detected = 0;
-    text_t text_buffer;
     char t = (char)id;
     mxc_gpio_cfg_t cfg = {
         .port  = MXC_GPIO1,
@@ -445,6 +348,19 @@ int add_person(Person *p, uint8_t id)
         p->name[0] = t;
         PR_DEBUG("Name entered: %s\n", p->name);
     }
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_3);
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_0);
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_2);
+
+    for(int i = 0; i < 10; i++){
+        MXC_GPIO_OutToggle(MXC_GPIO1, MXC_GPIO_PIN_3);
+        MXC_GPIO_OutToggle(MXC_GPIO1, MXC_GPIO_PIN_0);
+        MXC_GPIO_OutToggle(MXC_GPIO1, MXC_GPIO_PIN_2);
+        MXC_Delay(1000000);
+    }
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_3);
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_0);
+    MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_2);
 
     // Re-enable the ICC
     int ok_streak = 0;
@@ -471,16 +387,11 @@ int add_person(Person *p, uint8_t id)
                         face_detected = 0;
 
                         if (!init_come_closer) {
-                            text_buffer.data = "Come Closer";
-                            text_buffer.len = 11;
-                            MXC_TFT_PrintFont(60, 300, font, &text_buffer, NULL);
-                            MXC_GPIO_OutClr(MXC_GPIO1, MXC_GPIO_PIN_2);
                             init_come_closer = 1;
                         }
                         ok_streak = 0;
                         continue;
                     } else {
-                        MXC_TFT_ClearArea(&area, 4);
                         init_come_closer = 0;
                     } 
                     ok_streak++;
@@ -540,7 +451,6 @@ int add_person(Person *p, uint8_t id)
 
     err = update_info_field(p); //Update the information fiel
     p->db_embeddings_count = p->db_embeddings_count + p->embeddings_count;
-    MXC_TFT_ClearScreen();
     if (err) {
         printf("Failed to update info field with error code %i!\n", err);
         return err;
@@ -682,7 +592,6 @@ int record(uint8_t id)
 {
     Person p;
     Person *pptr = &p;
-    text_t text_buffer;
 
     setup_irqs(); // See notes in function definition
 
@@ -739,10 +648,6 @@ int record(uint8_t id)
         return err;
     } else if (err == -7) //Write exception handler
     {
-        MXC_TFT_ClearScreen();
-        text_buffer.data = "DB Corrupted, Reinitializing";
-        text_buffer.len = 29;
-        MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
         PR_DEBUG("Database Corrupted\n");
         err = init_db();
         if (err) {
@@ -758,8 +663,6 @@ int record(uint8_t id)
         // Reload default weights
         cnn_3_load_weights();
         cnn_3_configure();
-
-        MXC_TFT_ClearScreen();
 
     }
 
