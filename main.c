@@ -36,8 +36,8 @@
 #define MXC_GPIO_PIN_INTERRUPT_IN_2 MXC_GPIO_PIN_6
 
 extern volatile uint8_t face_detected;
-volatile uint8_t record_mode = 0;
-volatile uint8_t capture_key = 0;
+// volatile uint8_t record_mode = 0;
+// volatile uint8_t capture_key = 0;
 volatile char names[1024][7];
 volatile char name;
 
@@ -167,8 +167,8 @@ static const uint8_t camera_settings[][2] = {
 #endif
 
 mxc_uart_regs_t *CommUart;
-unsigned int touch_x, touch_y;
-int font = (int)&Liberation_Sans16x16[0];
+// unsigned int touch_x, touch_y;
+// int font = (int)&Liberation_Sans16x16[0];
 
 void init_names(void)
 {
@@ -181,11 +181,7 @@ void init_names(void)
 #pragma GCC diagnostic pop
 }
 
-#ifdef TFT_ENABLE
-area_t area = { 0, 290, 240, 30 };
-area_t area_1 = { 160, 260, 80, 30 };
-area_t area_2 = { 0, 260, 80, 30 };
-#endif
+
 // *****************************************************************************
 
 void WUT_IRQHandler(void)
@@ -204,7 +200,7 @@ int main(void)
     int id;
     int dma_channel;
     mxc_uart_regs_t *ConsoleUart;
-    text_t text_buffer;
+    // text_t text_buffer;
 
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC0);
@@ -217,7 +213,7 @@ int main(void)
     ConsoleUart = MXC_UART_GET_UART(CONSOLE_UART);
 
     if ((ret = MXC_UART_Init(ConsoleUart, CONSOLE_BAUD, MXC_UART_IBRO_CLK)) != E_NO_ERROR) {
-        PR_ERR("UART1 Init Error: %d\n", ret);
+        PR_ERR("UART0 Init Error: %d\n", ret);
         return ret;
     }
 
@@ -302,14 +298,6 @@ int main(void)
     }
     camera_set_vflip(0);
 
-#ifdef TFT_ENABLE
-    /* Initialize TFT display */
-    MXC_TFT_Init(NULL, NULL);
-    MXC_TFT_SetRotation(ROTATE_180);
-    MXC_TFT_SetBackGroundColor(4);
-    MXC_TFT_SetForeGroundColor(WHITE); // set font color to white
-
-#endif
 
 #ifdef LP_MODE_ENABLE
     /* Get ticks based on milliseconds */
@@ -351,7 +339,8 @@ int main(void)
 
                     switch (q.payload[0]) {
                     // case: message to register user with id
-                    case 0xA0:
+                    case 0x43:
+
                         if (q.plen > 1) {
 
                             printf("data: ");
@@ -361,7 +350,8 @@ int main(void)
                                 printf("%02X ", q.payload[i]);
                                 uint8_t id = q.payload[i];
                                 record(id);
-                                comm_send(2,150,NULL,0);
+                                uint8_t done = 1;
+                                comm_send(0x30,0x43,&done,sizeof(done));
 
                             }
                         } else {
@@ -369,20 +359,21 @@ int main(void)
                             printf("no data");
 
                         }
+
                         break;
 
-                    // case: polling if user is present
-                    case 0xF1:
-
+                    // case: polling for user
+                    case 0x42:
+                        printf("who are you\n");
                         if (name != ' '){
-
-                        uint8_t id = (uint8_t)name;
-                        comm_send(02,03,&id, sizeof(id));
+                            uint8_t id = (uint8_t)name;
+                            printf("%d", id);
+                            comm_send(0x30,0x42,&id, sizeof(id));
 
                         } else {
 
-                            uint8_t id = 255;
-                            comm_send(02,03,&id,sizeof(id));
+                            uint8_t no_id = 255;
+                            comm_send(0x30,0x42,&no_id,sizeof(no_id));
 
                         }
 
@@ -415,13 +406,6 @@ int main(void)
 
             }
                 
-#ifdef TFT_ENABLE
-            else {
-
-                MXC_TFT_ClearArea(&area, 4);
-
-            }
-#endif
         }
 
         loop_time = utils_get_time_ms() - loop_time;
