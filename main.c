@@ -365,6 +365,22 @@ int main(void)
                     // case: polling for user
                     case 0x42:
                         printf("who are you\n");
+                        
+                        face_detection();
+
+                        if (face_detected) {
+                            printf("face detected\n");
+                            face_id();
+                            // name = get_fname();
+                            face_detected = 0;
+
+                        }else if (!face_detected){
+                            printf("face not detected\n");
+                            set_fname(' ');
+                            // name = get_fname();
+                        } 
+                        name = get_fname();
+                        
                         if (name != ' '){
                             uint8_t id = (uint8_t)name;
                             printf("%d", id);
@@ -378,13 +394,6 @@ int main(void)
                         }
 
                         break;  
-
-                    // case: polling message 
-                    case 0xFA:
-
-                        comm_send(2,250,&value,sizeof(value));
-                        break;
-
                     // no known command
                     default:
                     
@@ -396,16 +405,7 @@ int main(void)
             }
         } else {
 
-            face_detection();
-
-            if (face_detected) {
-
-                face_id();
-                name = get_fname();
-                face_detected = 0;
-
-            }
-                
+            continue;              
         }
 
         loop_time = utils_get_time_ms() - loop_time;
